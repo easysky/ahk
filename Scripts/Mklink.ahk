@@ -1,4 +1,5 @@
 ﻿; @title: 创建符号链接
+; @release:	2021-02-20
 ; -------------------
 
 #NoTrayIcon
@@ -25,9 +26,10 @@ Gui,Font,Norm
 Gui,Add,Button,x195 y125 w100 Default gmkl_Do vmkl_Run,执行(&R)
 Gui,Add,Button,x300 y125 w100 gmkl_Do vmkl_Exit,退出(&X)
 Gui,Tab
-Gui,Add,Edit,x10 y160 w390 h120 cblue ReadOnly 0x100 -Wrap HScroll hwndid_mklOut vmkl_Out,% _Get_Time() " 就绪"
+Gui,Add,Edit,x10 y160 w390 h120 c000080 ReadOnly 0x100 -Wrap HScroll hwndid_mklOut vmkl_Out,% _Get_Time() " 就绪"
 Gui,Show,,创建目录联接「mklink /j」
 _Is_MKLFile:=0
+SetTimer,check_TC,500
 Return
 
 mkl_Do:
@@ -50,28 +52,12 @@ If (A_GuiControl="mkl_BtnSrc"){
 	tempStr=
 }Else If A_GuiControl In mkl_GetSrcDir,mkl_GetDesDir
 {
-	errFlag:=(A_GuiControl="mkl_GetSrcDir")?1:0,tempStr:=""
-	SplashImage,,b1 w450 fs10 cwffffcc FM10,激活 TotalCommander 窗口以获取路径；再次返回本程序时自动填充,,,Microsoft Yahei
-	If WinExist("ahk_class TTOTAL_CMD")
-	{
-		;Gui,Minimize
-		WinActivate,ahk_class TTOTAL_CMD
-		WinWaitNotActive,ahk_class TTOTAL_CMD
-		tempStr:=_get_TcFolder()
-	}
-	WinWaitActive,Ahk_Id %id_mklWin%
-	SplashImage,Off
-	tempStr:=RegExReplace(tempStr,"\\$")
-	If errFlag
-	{
-		GuiControl,,mkl_Src,%tempStr%
-		GuiControl,Focus,mkl_Src
-	}Else{
-		GuiControl,,mkl_Des,%tempStr%
-		GuiControl,Focus,mkl_Des
-	}
+	tempStr:=RegExReplace(_get_TcFolder(),"\\$")
+	GuiControl,,% (A_GuiControl="mkl_GetSrcDir")?"mkl_Src":"mkl_Des",%tempStr%
+	GuiControlGet,tempStr,,% (A_GuiControl="mkl_GetSrcDir")?"mkl_BtnSrc":"mkl_BtnDes"
+	_echo_Out("从 TotalCommander 窗口获取" . SubStr(tempStr,1,-4) . (_Is_MKLFile && (A_GuiControl="mkl_GetSrcDir")?"目录":"")),tempStr:=""
+	GuiControl,Focus,% (A_GuiControl="mkl_GetSrcDir")?"mkl_Src":"mkl_Des"
 	SendInput ^a
-	tempStr:=errFlag:=""
 }Else If (A_GuiControl="mkl_Src"){
 	GuiControlGet,tempStr,,mkl_Src
 	SplitPath,tempStr,tempStr
@@ -155,6 +141,11 @@ If (A_GuiControl="mkl_BtnSrc"){
 	Gosub GuiClose
 Return
 
+check_TC:
+GuiControl,% WinExist("ahk_class TTOTAL_CMD")?"Enable":"Disable",mkl_GetDesDir
+GuiControl,% WinExist("ahk_class TTOTAL_CMD")?"Enable":"Disable",mkl_GetSrcDir
+Return
+
 GuiClose:
 ExitApp
 Return
@@ -163,7 +154,8 @@ _echo_Out(s){
 	Global id_mklOut
 	GuiControl,Focus,mkl_Out
 	SendInput ^{End}
-	Control,EditPaste,% "`r`n" _Get_Time() A_Space s,,Ahk_Id %id_mklOut%	
+	Control,EditPaste,% "`r`n" _Get_Time() A_Space s,,Ahk_Id %id_mklOut%
+	SendInput {Home}
 }
 
 _Get_Time(){
@@ -197,7 +189,3 @@ cmdClipReturn(s){
 	Clipboard:=t
 	return Trim(r,"`r `n`t")
 }
-
-RemoveSplashImg:
-SplashImage,Off
-Return
